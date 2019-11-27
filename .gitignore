@@ -1,2 +1,11 @@
 .DS_Store
 .ipynb_checkpoints/
+*.toc
+*.aux
+*.log
+*.out
+*.pdf
+*.gz
+*.dvi
+*.lof
+*.lot
