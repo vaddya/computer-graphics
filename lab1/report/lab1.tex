@@ -30,6 +30,17 @@ $$
 p_{out} = (p_{in} - I_{low}) \cdot \frac{255}{I_{high} - I_{low}}
 $$
 
+Реализуем растяжение гистограммы в более общем виде, где $O_{high}$ и $O_{low}$ могут быть заданы через параметры.
+
+\begin{lstlisting}
+def stretch(img, low=0, high=K):
+	img_low = img.min()
+	img_high = img.max()
+	return ((img - img_low) / (img_high - img_low) * (high - low) + low).astype('uint8')
+\end{lstlisting}
+
+Применим растяжение гистограммы к тестовым изображениям. Дополнительно выведем гистограмму исходного и получившегося изображения.
+
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\linewidth]{tiger_stretch}
@@ -52,6 +63,38 @@ $$
 
 Попробуем применить устойчивое линейное растяжение гистограммы: будем отбрасывать $M\%$ (например, $5\%$) самых темных и самых светлых пикселей при подсчете минимума и максимума гистограммы исходного изображения. Это позволяет более устойчиво применить растягивание гистограммы, когда слишком светлых или слишком светлых пикселей небольшое количество.
 
+Реализуем функцию, для определения минимального и максимального значения пикселя в исходном изображении, которое должно быть сохранено. Затем создадим функцию для применения устойчивого линейного растяжения гистограммы, которая будет принимать эти значения на вход.
+
+\begin{lstlisting}
+def find_min_and_max(img, hist, drop=0.05):    
+	k = int(drop * img.size)
+	x_min, x_max = 0, 0
+
+	cnt = 0
+	for i in np.arange(K + 1):
+		cnt += hist[i]
+		if cnt >= k:
+			x_min = i
+			break
+
+	cnt = 0
+	for i in np.arange(K - 1, -1, -1):
+		cnt += hist[i]
+		if cnt >= k:
+			x_max = i
+			break
+
+	return x_min, x_max
+
+def stable_stretch(img, img_low, img_high, low=0, high=255):
+	img = img.astype('float')
+	corrected = (img - img_low) * (high - low) / (img_high - img_low)
+	res = np.clip(corrected, low, high)
+	return res.astype('uint8')
+\end{lstlisting}
+
+Применим алгоритм к изображениям. Дополнительно на гистограмме исходного изображения выделим вычисленные границы значений пикселей исходного изображения.
+
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\linewidth]{tiger_stretch_stable}
@@ -73,12 +116,29 @@ $$
 \subsection{Эквализация гистограммы}
 
 Применим другой метод повышения контрастности изображения -- эквализацию гистограммы. Определим функцию распределения $\mathit{cdf}(n) = h(0) + h(1) + ... + \mathit{cdf}(n)$. Другими словами, функция распределения является кумулятивной гистограммой. Наша задача сводится к тому, чтобы функция распределения имела вид, близкий к линейному, тогда пиксели изображения будут более равномерно использовать весь диапазон значений. Формула для преобразования пикселя входного изображения $p_{in}$:
-
 $$
 p_{out} = \mathit{round} \left( \frac{\mathit{cdf}(p_{in}) - \mathit{cdf}_{min}}{N} \cdot 255 \right),
 $$
-
 где $N$ -- общее число пикселей в изображении.
+
+Реализуем функцию для нахождения кумулятивной суммы по рассчитанной гистограмме изображения. Затем применим ее для эквализации гистограммы.
+
+\begin{lstlisting}
+def my_cumsum(hist):
+	cdf = hist.copy()
+	for i in np.arange(1, hist.size):
+		cdf[i] = cdf[i - 1] + cdf[i]
+	return cdf
+
+np.all(my_cumsum(my_hist(tiger)) == np.cumsum(my_hist(tiger)))
+## True
+
+def equalize(x, cdf, cdf_min):
+	N = cdf[-1]
+	return np.round((cdf[x] - cdf_min) / N * K).astype('uint8')
+\end{lstlisting}
+
+Применим созданную функцию для эквализации гистограмм тестовых изображений.
 
 \begin{figure}[H]
 	\centering
@@ -107,6 +167,39 @@ $$
 \mathit{cdf_1}(p_1) = \mathit{cdf_2}(p_2),
 $$
 тогда значение пикселя $p_1$ отображается в значение $p_2$.
+
+Реализуем функцию приведения гистограммы.
+
+\begin{lstlisting}
+def match_histogram(img, ref):
+	res = img.copy()
+	
+	img_hist = my_hist(img)
+	img_cdf = my_cumsum(img_hist)
+	img_cdf_norm = img_cdf / img.size
+	
+	ref_hist = my_hist(ref)
+	ref_cdf = my_cumsum(ref_hist)
+	ref_cdf_norm = ref_cdf / ref.size
+	
+	mapping = np.zeros(K + 1)
+	for i in np.arange(K + 1):
+		j = K
+		while True:
+			mapping[i] = j
+			j = j - 1
+			if j < 0 or img_cdf_norm[i] > ref_cdf_norm[j]:
+				break
+	
+	for i in np.arange(res.shape[0]):
+		for j in np.arange(res.shape[1]):
+			a = res.item(i,j)
+			b = mapping[a]
+			res.itemset((i,j), b)
+	
+	return res
+\end{lstlisting}
+
 
 \begin{figure}[H]
 	\centering
