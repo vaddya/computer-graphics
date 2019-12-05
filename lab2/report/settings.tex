@@ -36,7 +36,7 @@
 	keywordstyle=\color{blue},
 	numberstyle=\color{gray}\scriptsize\ttfamily,
 	stringstyle=\color{purple},
-	basicstyle=\footnotesize\ttfamily,
+	basicstyle=\lst@ifdisplaystyle\footnotesize\fi\ttfamily,
 	breakatwhitespace=false,
 	breaklines=true,
 	captionpos=b,
@@ -69,6 +69,7 @@
 \newcommand{\sign}[1][5cm]{\makebox[#1]{\hrulefill}}
 \newcommand{\equipollence}{\quad\Leftrightarrow\quad}
 \newcommand{\no}[1]{\overline{#1}}
+\newcommand{\code}[1]{\lstinline[language=none]|#1|}
 \graphicspath{{../pics/}}
 \captionsetup{justification=centering,margin=1cm}
 \def\arraystretch{1.3}
