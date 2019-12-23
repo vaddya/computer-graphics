@@ -68,21 +68,18 @@ def stretch(img, low=0, high=K):
 \begin{lstlisting}
 def find_min_and_max(img, hist, drop=0.05):    
 	k = int(drop * img.size)
-	x_min, x_max = 0, 0
-
+	x_min, x_max = 0, K
+	
 	cnt = 0
-	for i in np.arange(K + 1):
-		cnt += hist[i]
+	while x_min < x_max:
 		if cnt >= k:
-			x_min = i
 			break
-
-	cnt = 0
-	for i in np.arange(K - 1, -1, -1):
-		cnt += hist[i]
-		if cnt >= k:
-			x_max = i
-			break
+		if hist[x_min] < hist[x_max]:
+			cnt += hist[x_min]
+			x_min += 1
+		else:
+			cnt += hist[x_max]
+			x_max -= 1
 
 	return x_min, x_max
 
